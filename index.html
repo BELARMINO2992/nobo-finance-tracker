@@ -1253,12 +1253,22 @@ function bootApp(user) {
   document.getElementById('header-username').textContent = displayName;
   // Show avatar if available
   if (user.photoURL) {
-    const badge = document.getElementById('user-avatar');
-    if (badge) { badge.src = user.photoURL; badge.style.display = 'inline-block'; }
+    const avatarEl = document.getElementById('user-avatar');
+    if (avatarEl) {
+      avatarEl.src = user.photoURL;
+      avatarEl.style.display = 'inline-block';
+      const dotEl = document.getElementById('badge-dot');
+      if (dotEl) dotEl.style.display = 'none';
+    }
   }
   document.getElementById('f-date').value = todayISO();
   populateCategories('income');
-  // Start real-time Firestore listener — loads and syncs transactions automatically
+  // Attach profile badge click listener
+  const badge = document.querySelector('.user-badge');
+  if (badge) {
+    badge.onclick = () => openProfile();
+  }
+  // Start real-time Firestore listener
   startListener();
 }
 
