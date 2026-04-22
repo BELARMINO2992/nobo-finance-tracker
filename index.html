@@ -818,6 +818,9 @@
     </div>
   </header>
 
+  <!-- ── STATUS BAR ───────────────────────────── -->
+  <div id="db-status" style="display:none;background:#1a1a2e;border:1px solid #ff4d4d;border-radius:8px;padding:10px 16px;margin-bottom:16px;font-family:var(--font-mono);font-size:11px;color:#ff4d4d;"></div>
+
   <!-- ── SUMMARY CARDS ──────────────────────── -->
   <div class="summary-grid">
     <div class="card income-card">
@@ -1085,13 +1088,19 @@ function startListener() {
 
   unsubscribeListener = onSnapshot(colRef, (snapshot) => {
     console.log('Firestore snapshot received, docs:', snapshot.docs.length);
+    const statusEl = document.getElementById('db-status');
+    if (statusEl) statusEl.style.display = 'none';
     transactions = snapshot.docs
       .map(d => ({ ...d.data(), firestoreId: d.id }))
       .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
     render();
   }, (err) => {
     console.error('Firestore listener error:', err.code, err.message);
-    showToast('⚠ Database error: ' + err.code + ' — check Firestore rules');
+    const statusEl = document.getElementById('db-status');
+    if (statusEl) {
+      statusEl.style.display = 'block';
+      statusEl.textContent = '⚠ Database error: ' + err.code + ' — ' + err.message;
+    }
   });
 }
 
@@ -1287,7 +1296,13 @@ async function addTransaction() {
   };
 
   // Save to Firestore — the real-time listener will update transactions[] automatically
-  await saveData(tx);
+  try {
+    await saveData(tx);
+  } catch(e) {
+    showToast('⚠ Save failed: ' + e.message);
+    console.error('Save error:', e);
+    return;
+  }
 
   // Reset form fields (keep date & type)
   document.getElementById('f-amount').value   = '';
