@@ -1631,6 +1631,74 @@ document.addEventListener('DOMContentLoaded', () => {
   if (signOutBtn) signOutBtn.addEventListener('click', doLogout);
 });
 
+/* ──────────────────────────────────────────────
+   PROFILE EDITOR
+──────────────────────────────────────────────── */
+let pendingAvatarDataUrl = null;
+
+function openProfile() {
+  const user = auth.currentUser;
+  if (!user) return;
+  document.getElementById('profile-name').value  = user.displayName || '';
+  document.getElementById('profile-email').value = user.email || '';
+  document.getElementById('profile-error').textContent = '';
+  pendingAvatarDataUrl = null;
+  const bigImg      = document.getElementById('avatar-big-img');
+  const bigInitials = document.getElementById('avatar-big-initials');
+  if (user.photoURL) {
+    bigImg.src = user.photoURL; bigImg.style.display = 'block';
+    bigInitials.style.display = 'none';
+  } else {
+    bigImg.style.display = 'none';
+    bigInitials.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
+    bigInitials.style.display = 'block';
+  }
+  document.getElementById('profile-modal').style.display = 'flex';
+}
+
+function closeProfile() {
+  document.getElementById('profile-modal').style.display = 'none';
+  pendingAvatarDataUrl = null;
+}
+
+function handleAvatarChange(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    pendingAvatarDataUrl = e.target.result;
+    const bigImg = document.getElementById('avatar-big-img');
+    bigImg.src = pendingAvatarDataUrl;
+    bigImg.style.display = 'block';
+    document.getElementById('avatar-big-initials').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveProfile() {
+  const user  = auth.currentUser;
+  const name  = document.getElementById('profile-name').value.trim();
+  const errEl = document.getElementById('profile-error');
+  errEl.textContent = '';
+  if (!name) { errEl.textContent = 'Name cannot be empty.'; return; }
+  try {
+    await updateProfile(user, { displayName: name, photoURL: pendingAvatarDataUrl || user.photoURL || '' });
+    document.getElementById('header-username').textContent = name;
+    if (pendingAvatarDataUrl) {
+      const av = document.getElementById('user-avatar');
+      av.src = pendingAvatarDataUrl; av.style.display = 'inline-block';
+      document.getElementById('badge-dot').style.display = 'none';
+    }
+    showToast('✓ Profile updated!');
+    closeProfile();
+  } catch(e) { document.getElementById('profile-error').textContent = 'Error: ' + e.message; }
+}
+
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('profile-modal');
+  if (modal && e.target === modal) closeProfile();
+});
+
 /* Expose remaining functions needed by inline onclicks in HTML */
 window.doLogout          = doLogout;
 window.openProfile       = openProfile;
