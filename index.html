@@ -1080,15 +1080,18 @@ function startListener() {
   // Stop any existing listener first
   if (unsubscribeListener) unsubscribeListener();
 
-  // No orderBy to avoid needing a Firestore index — sort in JS instead
-  unsubscribeListener = onSnapshot(txCollection(), (snapshot) => {
+  const colRef = txCollection();
+  console.log('Starting Firestore listener for user:', currentUser.uid);
+
+  unsubscribeListener = onSnapshot(colRef, (snapshot) => {
+    console.log('Firestore snapshot received, docs:', snapshot.docs.length);
     transactions = snapshot.docs
       .map(d => ({ ...d.data(), firestoreId: d.id }))
       .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
     render();
   }, (err) => {
-    showToast('⚠ Sync error: ' + err.message);
-    console.error('Firestore error:', err);
+    console.error('Firestore listener error:', err.code, err.message);
+    showToast('⚠ Database error: ' + err.code + ' — check Firestore rules');
   });
 }
 
