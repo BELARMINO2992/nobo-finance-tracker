@@ -631,6 +631,7 @@
     /* AUTH SCREEN */
     #auth-screen {
       position: fixed; inset: 0;
+      display: flex;
       background: var(--bg);
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
       display: flex; align-items: center; justify-content: center;
@@ -702,16 +703,15 @@
     .modal-overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      display: none; align-items: center; justify-content: center;
+      display: none;
+      align-items: center; justify-content: center;
       z-index: 2000;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.25s ease;
+      pointer-events: none;
     }
     .modal-overlay.open {
       display: flex;
-      opacity: 1;
       pointer-events: all;
+      backdrop-filter: blur(4px);
     }
 
     .modal-box {
@@ -882,7 +882,7 @@
     <h1>NoBo</h1>
     <span class="tagline">Personal Finance Tracker</span>
     <div class="header-user">
-      <div class="user-badge" onclick="window.openProfile()" title="Edit profile">
+      <div class="user-badge" id="profile-badge" title="Edit profile">
         <img id="user-avatar" src="" style="display:none;width:22px;height:22px;border-radius:50%;object-fit:cover;" />
         <span class="dot" id="badge-dot"></span>
         <span id="header-username">—</span>
@@ -1268,9 +1268,9 @@ function bootApp(user) {
   document.getElementById('f-date').value = todayISO();
   populateCategories('income');
   // Attach profile badge click listener
-  const badge = document.querySelector('.user-badge');
+  const badge = document.getElementById('profile-badge');
   if (badge) {
-    badge.onclick = () => openProfile();
+    badge.addEventListener('click', openProfile);
   }
   // Start real-time Firestore listener
   startListener();
