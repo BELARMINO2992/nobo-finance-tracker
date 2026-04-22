@@ -1034,82 +1034,104 @@ const CATEGORY_COLORS = [
 ];
 
 /* ──────────────────────────────────────────────
-   DATA — Firestore cloud storage
-   Each user's transactions live at:
-   /users/{uid}/transactions/{docId}
-   This means data syncs across ALL devices
-   and persists forever regardless of logout.
+   DATA — localStorage (instant) + Firestore (sync)
+   Transactions always saved to localStorage first
+   for instant feedback, then synced to Firestore.
 ──────────────────────────────────────────────── */
 
-/* Currently logged-in Firebase user object */
-let currentUser = null;
-
-/* Global transactions state (kept in sync by Firestore listener) */
-let transactions = [];
-
-/* Firestore real-time listener unsubscribe function */
+let currentUser    = null;
+let transactions   = [];
 let unsubscribeListener = null;
+let currentType    = 'income';
 
-/* Current transaction type (income | expense) */
-let currentType = 'income';
+/* localStorage key per user */
+function lsKey() { return 'nobo_tx_' + (currentUser ? currentUser.uid : 'guest'); }
 
-/* Get Firestore collection reference for current user's transactions */
+/* Load from localStorage */
+function loadLocal() {
+  try { return JSON.parse(localStorage.getItem(lsKey())) || []; } catch { return []; }
+}
+
+/* Save to localStorage */
+function saveLocal(txs) {
+  try { localStorage.setItem(lsKey(), JSON.stringify(txs)); } catch(e) {}
+}
+
+/* Firestore collection ref */
 function txCollection() {
   return collection(db, 'users', currentUser.uid, 'transactions');
 }
 
-/* Save a new transaction to Firestore */
+/* Save transaction — localStorage first, then try Firestore */
 async function saveData(tx) {
+  // 1. Save to localStorage immediately
+  const all = loadLocal();
+  all.unshift(tx);
+  saveLocal(all);
+  transactions = all;
+  render();
+
+  // 2. Try Firestore in background
   if (!currentUser) return;
   try {
-    await addDoc(txCollection(), tx);
-  } catch (e) {
-    showToast('⚠ Error saving: ' + e.message);
+    const docRef = await addDoc(txCollection(), tx);
+    // Update local copy with firestoreId
+    tx.firestoreId = docRef.id;
+    const updated = loadLocal().map(t =>
+      t.createdAt === tx.createdAt && !t.firestoreId ? { ...t, firestoreId: docRef.id } : t
+    );
+    saveLocal(updated);
+    transactions = updated;
+  } catch(e) {
+    showToast('⚠ Cloud sync failed — saved locally only');
   }
 }
 
-/* Delete a transaction from Firestore by its Firestore document ID */
-async function deleteFromFirestore(firestoreId) {
-  if (!currentUser) return;
+/* Delete transaction */
+async function deleteFromFirestore(id) {
+  // Remove from localStorage
+  const updated = loadLocal().filter(t => t.firestoreId !== id && t.createdAt !== id);
+  saveLocal(updated);
+  transactions = updated;
+  render();
+
+  // Try Firestore
+  if (!currentUser || !id) return;
   try {
-    await deleteDoc(doc(db, 'users', currentUser.uid, 'transactions', firestoreId));
-  } catch (e) {
-    showToast('⚠ Error deleting: ' + e.message);
-  }
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'transactions', id));
+  } catch(e) {}
 }
 
-/* Start real-time listener — updates transactions[] whenever Firestore changes */
+/* Start Firestore listener — merges cloud data with local */
 function startListener() {
-  // Stop any existing listener first
   if (unsubscribeListener) unsubscribeListener();
 
-  const colRef = txCollection();
-  console.log('Starting Firestore listener for user:', currentUser.uid);
+  // Load local data immediately so app works right away
+  transactions = loadLocal();
+  render();
 
-  unsubscribeListener = onSnapshot(colRef, (snapshot) => {
-    console.log('Firestore snapshot received, docs:', snapshot.docs.length);
-    const statusEl = document.getElementById('db-status');
-    if (statusEl) statusEl.style.display = 'none';
-    transactions = snapshot.docs
-      .map(d => ({ ...d.data(), firestoreId: d.id }))
-      .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
-    render();
-  }, (err) => {
-    console.error('Firestore listener error:', err.code, err.message);
-    const statusEl = document.getElementById('db-status');
-    if (statusEl) {
-      statusEl.style.display = 'block';
-      statusEl.textContent = '⚠ Database error: ' + err.code + ' — ' + err.message;
-    }
-  });
+  // Then try Firestore
+  try {
+    const colRef = txCollection();
+    unsubscribeListener = onSnapshot(colRef, (snapshot) => {
+      if (snapshot.docs.length > 0) {
+        // Cloud has data — use it and update localStorage
+        const cloudTxs = snapshot.docs
+          .map(d => ({ ...d.data(), firestoreId: d.id }))
+          .sort((a, b) => (b.date > a.date ? 1 : b.date < a.date ? -1 : 0));
+        saveLocal(cloudTxs);
+        transactions = cloudTxs;
+        render();
+      }
+    }, (err) => {
+      showToast('Cloud sync unavailable — using local data');
+    });
+  } catch(e) {}
 }
 
 /* Stop listener on logout */
 function stopListener() {
-  if (unsubscribeListener) {
-    unsubscribeListener();
-    unsubscribeListener = null;
-  }
+  if (unsubscribeListener) { unsubscribeListener(); unsubscribeListener = null; }
 }
 
 /* ── Google Sign-In ── */
@@ -1295,14 +1317,8 @@ async function addTransaction() {
     createdAt: Date.now()   // for ordering fallback
   };
 
-  // Save to Firestore — the real-time listener will update transactions[] automatically
-  try {
-    await saveData(tx);
-  } catch(e) {
-    showToast('⚠ Save failed: ' + e.message);
-    console.error('Save error:', e);
-    return;
-  }
+  // Save transaction (localStorage + Firestore)
+  await saveData(tx);
 
   // Reset form fields (keep date & type)
   document.getElementById('f-amount').value   = '';
@@ -1315,9 +1331,8 @@ async function addTransaction() {
 /* ──────────────────────────────────────────────
    5. DELETE TRANSACTION — removes from Firestore
 ──────────────────────────────────────────────── */
-async function deleteTransaction(firestoreId) {
-  await deleteFromFirestore(firestoreId);
-  // The real-time listener will automatically update transactions[] and re-render
+async function deleteTransaction(id) {
+  await deleteFromFirestore(id);
   showToast('Entry removed.');
 }
 
@@ -1409,7 +1424,7 @@ function renderTransactionList() {
       <div class="tx-amount ${tx.type}">
         ${tx.type === 'income' ? '+' : '−'}${fmt(tx.amount)}
       </div>
-      <button class="btn-delete" onclick="window.deleteTransaction('${tx.firestoreId}')" title="Delete">✕</button>
+      <button class="btn-delete" onclick="window.deleteTransaction('${tx.firestoreId || tx.createdAt}')" title="Delete">✕</button>
     </div>
   `).join('');
 }
