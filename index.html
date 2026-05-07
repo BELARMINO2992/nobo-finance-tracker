@@ -328,14 +328,13 @@
 
     .chart-panel { padding: 18px 20px; }
 
-    .chart-panel .panel-title { font-size: 0.85rem; margin-bottom: 14px; }
+    .chart-panel .panel-title { font-size: 0.85rem; margin-bottom: 10px; }
 
     /* Bar chart */
     .bar-chart {
-      display: flex;
-      align-items: flex-end;
-      gap: 6px;
-      height: 130px;
+      width: 100%;
+      height: 160px;
+      display: block;
     }
 
     .bar-col {
@@ -1542,78 +1541,108 @@ function renderMonthlySummary() {
 }
 
 /* ──────────────────────────────────────────────
-   11. BAR CHART (Last 6 months income vs expense)
+   11. BAR CHART — Grouped SVG chart (income vs expense per month)
 ──────────────────────────────────────────────── */
 function renderBarChart() {
   const container = document.getElementById('bar-chart');
-  // Remove previous legend if it exists (prevents duplicates on re-render)
-  const oldLegend = document.getElementById('bar-legend-row');
-  if (oldLegend) oldLegend.remove();
+  const legendId  = document.getElementById('bar-legend-row');
+  if (legendId) legendId.remove();
 
-  // Build last-6-months keys
+  // Build last 6 months
   const keys = [];
   const now  = new Date();
   for (let i = 5; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
 
-  // Aggregate per month
   const data = keys.map(k => {
     const txs = transactions.filter(t => t.date.startsWith(k));
     return {
-      label: k.slice(5),   // "MM"
-      income:  txs.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0),
-      expense: txs.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0)
+      label:   new Date(k+'-01').toLocaleDateString('en-US',{month:'short'}),
+      income:  txs.filter(t => t.type==='income').reduce((s,t)=>s+t.amount,0),
+      expense: txs.filter(t => t.type==='expense').reduce((s,t)=>s+t.amount,0)
     };
   });
 
-  // Find max value to normalise bar heights (reserve top 36px for amount labels)
-  const BAR_AREA = 90;
-  const maxVal = Math.max(...data.flatMap(d => [d.income, d.expense]), 1);
+  const maxVal = Math.max(...data.flatMap(d=>[d.income,d.expense]),1);
 
-  /* Format a compact amount label: "$1.2k", "$450" etc. */
+  // SVG dimensions
+  const W=480, H=160, padL=44, padB=24, padT=16, padR=10;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  // Y-axis ticks (4 ticks)
+  const tickCount = 4;
+  const tickStep  = Math.ceil(maxVal / tickCount / 10) * 10 || 1;
+  const ticks     = Array.from({length: tickCount+1}, (_,i) => i * tickStep);
+
   function fmtShort(n) {
-    if (n === 0) return '';
-    if (n >= 1000) return '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-    return '$' + Math.round(n);
+    if (n===0) return '';
+    if (n>=1000) return '$'+(n/1000).toFixed(1).replace(/\.0$/,'')+'k';
+    return '$'+Math.round(n);
   }
 
-  container.innerHTML = data.map(d => {
-    const inH  = Math.max(Math.round((d.income  / maxVal) * BAR_AREA), d.income  > 0 ? 4 : 0);
-    const exH  = Math.max(Math.round((d.expense / maxVal) * BAR_AREA), d.expense > 0 ? 4 : 0);
-    const inLbl  = fmtShort(d.income);
-    const exLbl  = fmtShort(d.expense);
-    return `
-      <div class="bar-col" style="flex:1;gap:0;">
-        <div style="display:flex;gap:2px;align-items:flex-end;height:${BAR_AREA}px;width:100%;">
-          <!-- Income bar with label above -->
-          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
-            ${inLbl ? `<div class="bar-amount income-amt">${inLbl}</div>` : '<div style="height:12px"></div>'}
-            <div class="bar" style="width:100%;height:${inH}px;background:var(--income);opacity:0.75;"></div>
-          </div>
-          <!-- Expense bar with label above -->
-          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;">
-            ${exLbl ? `<div class="bar-amount expense-amt">${exLbl}</div>` : '<div style="height:12px"></div>'}
-            <div class="bar" style="width:100%;height:${exH}px;background:var(--expense);opacity:0.75;"></div>
-          </div>
-        </div>
-        <div class="bar-label">${d.label}</div>
-      </div>`;
-  }).join('');
+  function yPos(val) {
+    return padT + chartH - (val / (tickStep * tickCount)) * chartH;
+  }
 
-  // Append legend once below the bars
+  const groupW   = chartW / data.length;
+  const barW     = groupW * 0.32;
+  const groupGap = groupW * 0.08;
+
+  // Build SVG
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible;">`;
+
+  // Gridlines + Y labels
+  ticks.forEach(tick => {
+    const y = yPos(tick);
+    svg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#252830" stroke-width="1"/>`;
+    svg += `<text x="${padL-6}" y="${y+4}" text-anchor="end" font-size="9" font-family="DM Mono,monospace" fill="#6b7080">${fmtShort(tick)||'0'}</text>`;
+  });
+
+  // Bars + X labels
+  data.forEach((d, i) => {
+    const groupX = padL + i * groupW + groupGap;
+    const inH    = Math.max((d.income  / (tickStep*tickCount)) * chartH, d.income  > 0 ? 2 : 0);
+    const exH    = Math.max((d.expense / (tickStep*tickCount)) * chartH, d.expense > 0 ? 2 : 0);
+    const inX    = groupX;
+    const exX    = groupX + barW + 2;
+    const inY    = padT + chartH - inH;
+    const exY    = padT + chartH - exH;
+
+    // Income bar
+    if (d.income > 0) {
+      svg += `<rect x="${inX}" y="${inY}" width="${barW}" height="${inH}" rx="2" fill="#38bdf8" opacity="0.85"/>`;
+      if (inH > 14)
+        svg += `<text x="${inX+barW/2}" y="${inY-3}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="#38bdf8">${fmtShort(d.income)}</text>`;
+    }
+
+    // Expense bar
+    if (d.expense > 0) {
+      svg += `<rect x="${exX}" y="${exY}" width="${barW}" height="${exH}" rx="2" fill="#ff4d4d" opacity="0.85"/>`;
+      if (exH > 14)
+        svg += `<text x="${exX+barW/2}" y="${exY-3}" text-anchor="middle" font-size="8" font-family="DM Mono,monospace" fill="#ff4d4d">${fmtShort(d.expense)}</text>`;
+    }
+
+    // X label
+    const labelX = groupX + barW + 1;
+    svg += `<text x="${labelX}" y="${H-6}" text-anchor="middle" font-size="9" font-family="DM Mono,monospace" fill="#6b7080">${d.label}</text>`;
+  });
+
+  // Baseline
+  svg += `<line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#3a3e4a" stroke-width="1.5"/>`;
+
+  svg += `</svg>`;
+  container.innerHTML = svg;
+
+  // Legend
   container.insertAdjacentHTML('afterend', `
     <div class="bar-legend" id="bar-legend-row">
-      <div class="bar-legend-item">
-        <span class="bar-legend-dot" style="background:var(--income);opacity:0.75;"></span> Income
-      </div>
-      <div class="bar-legend-item">
-        <span class="bar-legend-dot" style="background:var(--expense);opacity:0.75;"></span> Expense
-      </div>
+      <div class="bar-legend-item"><span class="bar-legend-dot" style="background:#38bdf8;"></span> Income</div>
+      <div class="bar-legend-item"><span class="bar-legend-dot" style="background:#ff4d4d;"></span> Expense</div>
     </div>`);
 }
-
 /* ──────────────────────────────────────────────
    12. DONUT CHART (SVG — Expense by category)
 ──────────────────────────────────────────────── */
