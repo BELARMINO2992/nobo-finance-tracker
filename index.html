@@ -1885,21 +1885,32 @@ window.handleAvatarChange = function handleAvatarChange(event) {
 
 window.saveProfile = async function saveProfile() {
   const user  = auth.currentUser;
+  if (!user) { alert('Not logged in'); return; }
   const name  = document.getElementById('profile-name').value.trim();
-  const errEl = document.getElementById('profile-error');
-  errEl.textContent = '';
-  if (!name) { errEl.textContent = 'Name cannot be empty.'; return; }
+  if (!name)  { document.getElementById('profile-error').textContent = 'Name cannot be empty.'; return; }
+  document.getElementById('profile-error').textContent = '';
+  document.getElementById('btn-save-profile-final').textContent = 'Saving...';
   try {
-    await updateProfile(user, { displayName: name, photoURL: pendingAvatarDataUrl || user.photoURL || '' });
+    await updateProfile(user, {
+      displayName: name,
+      photoURL: pendingAvatarDataUrl || user.photoURL || ''
+    });
     document.getElementById('header-username').textContent = name;
     if (pendingAvatarDataUrl) {
       const av = document.getElementById('user-avatar');
-      av.src = pendingAvatarDataUrl; av.style.display = 'inline-block';
+      av.src = pendingAvatarDataUrl;
+      av.style.display = 'inline-block';
       document.getElementById('badge-dot').style.display = 'none';
     }
+    document.getElementById('btn-save-profile-final').textContent = 'Save Changes';
+    document.getElementById('profile-modal').style.display = 'none';
+    pendingAvatarDataUrl = null;
     showToast('✓ Profile updated!');
-    closeProfile();
-  } catch(e) { document.getElementById('profile-error').textContent = 'Error: ' + e.message; }
+  } catch(e) {
+    document.getElementById('btn-save-profile-final').textContent = 'Save Changes';
+    document.getElementById('profile-error').textContent = 'Error: ' + e.message;
+    alert('Save failed: ' + e.message);
+  }
 }
 
 document.addEventListener('click', (e) => {
