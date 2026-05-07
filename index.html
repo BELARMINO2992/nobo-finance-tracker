@@ -480,7 +480,7 @@
 
     .tx-row {
       display: grid;
-      grid-template-columns: auto 1fr auto auto;
+      grid-template-columns: auto 1fr auto auto auto;
       gap: 12px;
       align-items: center;
       padding: 14px 18px;
@@ -549,6 +549,54 @@
     }
 
     .btn-delete:hover { color: var(--expense); }
+
+    .btn-edit {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1;
+      padding: 4px;
+      border-radius: 4px;
+      transition: color var(--transition);
+    }
+    .btn-edit:hover { color: var(--accent); }
+
+    /* Edit transaction modal */
+    #edit-modal {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    #edit-modal.open { display: flex; }
+    .edit-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 28px 24px;
+      width: 100%; max-width: 360px; position: relative;
+    }
+    .edit-box::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+      background: linear-gradient(90deg, var(--expense), var(--accent));
+      border-radius: 16px 16px 0 0;
+    }
+    .edit-title { font-family: var(--font-head); font-size: 1.1rem; font-weight: 700; margin-bottom: 18px; }
+    .edit-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--subtle); font-size: 18px; cursor: pointer; }
+    .edit-close:hover { color: var(--text); }
+    .edit-field { margin-bottom: 12px; }
+    .edit-field label { display: block; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--subtle); margin-bottom: 5px; }
+    .edit-field input, .edit-field select, .edit-field textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; color: var(--text); font-family: var(--font-body); font-size: 13px; outline: none; }
+    .edit-field input:focus, .edit-field select:focus, .edit-field textarea:focus { border-color: var(--accent); }
+    .edit-field textarea { resize: vertical; min-height: 56px; }
+    .btn-save-edit { width: 100%; padding: 11px; border: 1px solid rgba(129,140,248,0.3); border-radius: 8px; background: var(--accent-bg); color: var(--accent); font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; margin-top: 4px; }
+    .btn-save-edit:hover { background: rgba(129,140,248,0.15); }
+    .edit-type-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 3px; margin-bottom: 12px; }
+    .edit-type-btn { flex: 1; padding: 7px 0; border: none; border-radius: 6px; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; background: transparent; color: var(--subtle); transition: all var(--transition); }
+    .edit-type-btn.active-income { background: var(--income-bg); color: var(--income); border: 1px solid rgba(56,189,248,0.25); }
+    .edit-type-btn.active-expense { background: var(--expense-bg); color: var(--expense); border: 1px solid rgba(255,77,77,0.25); }
 
     /* ─────────────────────────────────────────────
        MONTHLY SUMMARY TABLE
@@ -977,6 +1025,40 @@
 
     <div class="auth-error" id="profile-error"></div>
     <button class="btn-save-profile" onclick="window.saveProfile()">Save Changes</button>
+  </div>
+</div>
+
+<!-- ── EDIT TRANSACTION MODAL ── -->
+<div id="edit-modal">
+  <div class="edit-box">
+    <button class="edit-close" onclick="window.closeEdit()">✕</button>
+    <div class="edit-title">Edit Transaction</div>
+    <input type="hidden" id="edit-tx-id" />
+
+    <!-- Type toggle -->
+    <div class="edit-type-toggle">
+      <button class="edit-type-btn active-income" id="edit-btn-income" onclick="window.setEditType('income')">↑ Income</button>
+      <button class="edit-type-btn" id="edit-btn-expense" onclick="window.setEditType('expense')">↓ Expense</button>
+    </div>
+
+    <div class="edit-field">
+      <label>Amount</label>
+      <input type="number" id="edit-amount" placeholder="0.00" min="0" step="0.01" />
+    </div>
+    <div class="edit-field">
+      <label>Category</label>
+      <select id="edit-category"></select>
+    </div>
+    <div class="edit-field">
+      <label>Date</label>
+      <input type="date" id="edit-date" />
+    </div>
+    <div class="edit-field">
+      <label>Note</label>
+      <textarea id="edit-note" rows="2" placeholder="Optional description…"></textarea>
+    </div>
+    <div class="auth-error" id="edit-error"></div>
+    <button class="btn-save-edit" onclick="window.saveEdit()">Save Changes</button>
   </div>
 </div>
 
@@ -1416,7 +1498,10 @@ function renderTransactionList() {
       <div class="tx-amount ${tx.type}">
         ${tx.type === 'income' ? '+' : '−'}${fmt(tx.amount)}
       </div>
-      <button class="btn-delete" onclick="window.deleteTransaction('${tx.firestoreId || tx.createdAt}')" title="Delete">✕</button>
+      <div style="display:flex;gap:2px;">
+        <button class="btn-edit" onclick="window.openEdit('${tx.firestoreId || tx.createdAt}')" title="Edit">✏️</button>
+        <button class="btn-delete" onclick="window.deleteTransaction('${tx.firestoreId || tx.createdAt}')" title="Delete">✕</button>
+      </div>
     </div>
   `).join('');
 }
@@ -1632,6 +1717,96 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ──────────────────────────────────────────────
+   EDIT TRANSACTION
+──────────────────────────────────────────────── */
+let editType = 'income';
+
+function openEdit(id) {
+  const tx = transactions.find(t => (t.firestoreId === id || String(t.createdAt) === String(id)));
+  if (!tx) return;
+  editType = tx.type;
+  document.getElementById('edit-tx-id').value  = id;
+  document.getElementById('edit-amount').value  = tx.amount;
+  document.getElementById('edit-date').value    = tx.date;
+  document.getElementById('edit-note').value    = tx.note || '';
+  document.getElementById('edit-error').textContent = '';
+  // populate category dropdown
+  const sel = document.getElementById('edit-category');
+  sel.innerHTML = '';
+  CATEGORIES[tx.type].forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    if (cat === tx.category) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  // set type buttons
+  setEditType(tx.type);
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+
+function closeEdit() {
+  document.getElementById('edit-modal').style.display = 'none';
+}
+
+function setEditType(type) {
+  editType = type;
+  const bi = document.getElementById('edit-btn-income');
+  const be = document.getElementById('edit-btn-expense');
+  bi.className = 'edit-type-btn' + (type === 'income'  ? ' active-income'  : '');
+  be.className = 'edit-type-btn' + (type === 'expense' ? ' active-expense' : '');
+  // refresh categories
+  const sel = document.getElementById('edit-category');
+  const current = sel.value;
+  sel.innerHTML = '';
+  CATEGORIES[type].forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat; opt.textContent = cat;
+    if (cat === current) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+async function saveEdit() {
+  const id       = document.getElementById('edit-tx-id').value;
+  const amount   = parseFloat(document.getElementById('edit-amount').value);
+  const category = document.getElementById('edit-category').value;
+  const date     = document.getElementById('edit-date').value;
+  const note     = document.getElementById('edit-note').value.trim();
+  const errEl    = document.getElementById('edit-error');
+  errEl.textContent = '';
+
+  if (!amount || amount <= 0) { errEl.textContent = 'Enter a valid amount.'; return; }
+  if (!category)              { errEl.textContent = 'Select a category.';    return; }
+  if (!date)                  { errEl.textContent = 'Pick a date.';           return; }
+
+  const updated = { type: editType, amount, category, date, note: note || category, createdAt: Date.now() };
+
+  // Update localStorage
+  const all = loadLocal().map(t =>
+    (t.firestoreId === id || String(t.createdAt) === String(id)) ? { ...t, ...updated } : t
+  );
+  saveLocal(all);
+  transactions = all;
+
+  // Update Firestore
+  if (currentUser && id) {
+    try {
+      const { updateDoc, doc: fsDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+      await updateDoc(fsDoc(db, 'users', currentUser.uid, 'transactions', id), updated);
+    } catch(e) {}
+  }
+
+  render();
+  closeEdit();
+  showToast('✓ Transaction updated!');
+}
+
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('edit-modal');
+  if (modal && e.target === modal) closeEdit();
+});
+
+/* ──────────────────────────────────────────────
    PROFILE EDITOR
 ──────────────────────────────────────────────── */
 let pendingAvatarDataUrl = null;
@@ -1701,6 +1876,10 @@ document.addEventListener('click', (e) => {
 
 /* Expose remaining functions needed by inline onclicks in HTML */
 window.doLogout          = doLogout;
+window.openEdit          = openEdit;
+window.closeEdit         = closeEdit;
+window.setEditType       = setEditType;
+window.saveEdit          = saveEdit;
 window.openProfile       = openProfile;
 window.closeProfile      = closeProfile;
 window.saveProfile       = saveProfile;
