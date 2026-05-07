@@ -993,75 +993,31 @@
   </div><!-- end main-grid -->
 </div><!-- end app-shell -->
 
-<!-- ── PROFILE MODAL (body level, outside app-shell) ── -->
-<div id="profile-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center;">
-  <div class="modal-box">
-    <button class="modal-close" onclick="window.closeProfile()">✕</button>
-    <div class="modal-title">Edit Profile</div>
-
-    <!-- Avatar -->
-    <div class="avatar-editor">
-      <div class="avatar-preview" id="avatar-preview-big" onclick="document.getElementById('avatar-file').click()">
-        <img id="avatar-big-img" src="" style="display:none;" />
-        <span id="avatar-big-initials">?</span>
-        <div class="avatar-overlay">Change</div>
-      </div>
+<!-- ── PROFILE MODAL ── -->
+<div id="profile-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#16181c;border:1px solid #252830;border-radius:16px;padding:32px 28px;width:340px;max-width:90vw;">
+    <button onclick="document.getElementById('profile-modal').style.display='none'" style="position:absolute;top:12px;right:16px;background:none;border:none;color:#6b7080;font-size:20px;cursor:pointer;">✕</button>
+    <h2 style="font-family:'Playfair Display',serif;margin-bottom:20px;font-size:1.1rem;">Edit Profile</h2>
+    <div style="text-align:center;margin-bottom:20px;">
+      <img id="avatar-big-img" src="" style="display:none;width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #252830;cursor:pointer;" onclick="document.getElementById('avatar-file').click()" />
+      <div id="avatar-big-initials" style="width:72px;height:72px;border-radius:50%;background:#3a3e4a;display:inline-flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;border:2px solid #252830;" onclick="document.getElementById('avatar-file').click()">?</div>
       <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="window.handleAvatarChange(event)" />
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--subtle);">Click to change photo</span>
+      <p style="font-size:10px;color:#6b7080;margin-top:6px;font-family:'DM Mono',monospace;">Click to change photo</p>
     </div>
-
-    <!-- Display Name -->
-    <div class="profile-field">
-      <label>Display Name</label>
-      <input type="text" id="profile-name" placeholder="Your name" />
+    <div style="margin-bottom:12px;">
+      <label style="display:block;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;color:#6b7080;margin-bottom:6px;letter-spacing:0.1em;">Display Name</label>
+      <input type="text" id="profile-name" style="width:100%;background:#0e0f11;border:1px solid #252830;border-radius:8px;padding:10px 12px;color:#e8eaf0;font-size:13px;outline:none;box-sizing:border-box;" />
     </div>
-
-    <!-- Email (read-only) -->
-    <div class="profile-field">
-      <label>Email</label>
-      <input type="email" id="profile-email" disabled />
+    <div style="margin-bottom:16px;">
+      <label style="display:block;font-family:'DM Mono',monospace;font-size:10px;text-transform:uppercase;color:#6b7080;margin-bottom:6px;letter-spacing:0.1em;">Email</label>
+      <input type="email" id="profile-email" disabled style="width:100%;background:#0e0f11;border:1px solid #252830;border-radius:8px;padding:10px 12px;color:#6b7080;font-size:13px;outline:none;box-sizing:border-box;opacity:0.6;" />
     </div>
-
-    <div class="auth-error" id="profile-error"></div>
-    <button class="btn-save-profile" class="btn-save-profile" id="btn-save-profile-final" onclick="window.saveProfile()">Save Changes</button>
+    <p id="profile-error" style="color:#ff4d4d;font-size:11px;text-align:center;margin-bottom:8px;font-family:'DM Mono',monospace;min-height:16px;"></p>
+    <button id="btn-save-profile-final" style="width:100%;padding:12px;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.3);border-radius:8px;color:#818cf8;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;">SAVE CHANGES</button>
   </div>
 </div>
 
-<!-- ── EDIT TRANSACTION MODAL ── -->
-<div id="edit-modal">
-  <div class="edit-box">
-    <button class="edit-close" onclick="window.closeEdit()">✕</button>
-    <div class="edit-title">Edit Transaction</div>
-    <input type="hidden" id="edit-tx-id" />
-
-    <!-- Type toggle -->
-    <div class="edit-type-toggle">
-      <button class="edit-type-btn active-income" id="edit-btn-income" onclick="window.setEditType('income')">↑ Income</button>
-      <button class="edit-type-btn" id="edit-btn-expense" onclick="window.setEditType('expense')">↓ Expense</button>
-    </div>
-
-    <div class="edit-field">
-      <label>Amount</label>
-      <input type="number" id="edit-amount" placeholder="0.00" min="0" step="0.01" />
-    </div>
-    <div class="edit-field">
-      <label>Category</label>
-      <select id="edit-category"></select>
-    </div>
-    <div class="edit-field">
-      <label>Date</label>
-      <input type="date" id="edit-date" />
-    </div>
-    <div class="edit-field">
-      <label>Note</label>
-      <textarea id="edit-note" rows="2" placeholder="Optional description…"></textarea>
-    </div>
-    <div class="auth-error" id="edit-error"></div>
-    <button class="btn-save-edit" onclick="window.saveEdit()">Save Changes</button>
-  </div>
-</div>
-
-<!-- Toast notification -->
+<!-- Toast<!-- Toast notification -->
 <div class="toast" id="toast"></div>
 
 <!-- ════════════════════════════════════════════
@@ -1308,10 +1264,7 @@ function bootApp(user) {
   if (badge) badge.addEventListener('click', openProfile);
   // Attach save profile button
   const saveBtn = document.getElementById('btn-save-profile-final');
-  if (saveBtn) saveBtn.addEventListener('click', saveProfile);
-  // Attach close profile button
-  const closeBtn = document.querySelector('.modal-close');
-  if (closeBtn) closeBtn.addEventListener('click', closeProfile);
+  if (saveBtn) saveBtn.onclick = window.saveProfile;
   // Start real-time Firestore listener
   startListener();
 }
@@ -1839,84 +1792,81 @@ document.addEventListener('click', (e) => {
   if (modal && e.target === modal) closeEdit();
 });
 
-/* ──────────────────────────────────────────────
-   PROFILE EDITOR
-──────────────────────────────────────────────── */
+/* ── PROFILE EDITOR ── */
 let pendingAvatarDataUrl = null;
 
-window.openProfile = function openProfile() {
+window.openProfile = function() {
   const user = auth.currentUser;
   if (!user) return;
+  // Populate fields
   document.getElementById('profile-name').value  = user.displayName || '';
   document.getElementById('profile-email').value = user.email || '';
   document.getElementById('profile-error').textContent = '';
+  document.getElementById('btn-save-profile-final').textContent = 'SAVE CHANGES';
   pendingAvatarDataUrl = null;
-  const bigImg      = document.getElementById('avatar-big-img');
-  const bigInitials = document.getElementById('avatar-big-initials');
+  // Avatar
   if (user.photoURL) {
-    bigImg.src = user.photoURL; bigImg.style.display = 'block';
-    bigInitials.style.display = 'none';
+    document.getElementById('avatar-big-img').src = user.photoURL;
+    document.getElementById('avatar-big-img').style.display = 'inline-block';
+    document.getElementById('avatar-big-initials').style.display = 'none';
   } else {
-    bigImg.style.display = 'none';
-    bigInitials.textContent = (user.displayName || user.email || '?')[0].toUpperCase();
-    bigInitials.style.display = 'block';
+    document.getElementById('avatar-big-img').style.display = 'none';
+    document.getElementById('avatar-big-initials').style.display = 'inline-flex';
+    document.getElementById('avatar-big-initials').textContent = (user.displayName || user.email || '?')[0].toUpperCase();
   }
-  document.getElementById('profile-modal').style.display = 'flex';
-}
+  document.getElementById('profile-modal').style.display = 'block';
+};
 
-window.closeProfile = function closeProfile() {
+window.closeProfile = function() {
   document.getElementById('profile-modal').style.display = 'none';
-  pendingAvatarDataUrl = null;
-}
+};
 
-window.handleAvatarChange = function handleAvatarChange(event) {
+window.handleAvatarChange = function(event) {
   const file = event.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = (e) => {
     pendingAvatarDataUrl = e.target.result;
-    const bigImg = document.getElementById('avatar-big-img');
-    bigImg.src = pendingAvatarDataUrl;
-    bigImg.style.display = 'block';
+    document.getElementById('avatar-big-img').src = pendingAvatarDataUrl;
+    document.getElementById('avatar-big-img').style.display = 'inline-block';
     document.getElementById('avatar-big-initials').style.display = 'none';
   };
   reader.readAsDataURL(file);
-}
+};
 
-window.saveProfile = async function saveProfile() {
-  const user  = auth.currentUser;
-  if (!user) { alert('Not logged in'); return; }
-  const name  = document.getElementById('profile-name').value.trim();
-  if (!name)  { document.getElementById('profile-error').textContent = 'Name cannot be empty.'; return; }
-  document.getElementById('profile-error').textContent = '';
-  document.getElementById('btn-save-profile-final').textContent = 'Saving...';
+window.saveProfile = async function() {
+  const user = auth.currentUser;
+  if (!user) { alert('Not logged in!'); return; }
+  const name = document.getElementById('profile-name').value.trim();
+  const errEl = document.getElementById('profile-error');
+  const btn   = document.getElementById('btn-save-profile-final');
+  if (!name) { errEl.textContent = 'Name cannot be empty.'; return; }
+  errEl.textContent = '';
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
   try {
     await updateProfile(user, {
       displayName: name,
       photoURL: pendingAvatarDataUrl || user.photoURL || ''
     });
+    // Update header
     document.getElementById('header-username').textContent = name;
     if (pendingAvatarDataUrl) {
-      const av = document.getElementById('user-avatar');
-      av.src = pendingAvatarDataUrl;
-      av.style.display = 'inline-block';
+      document.getElementById('user-avatar').src = pendingAvatarDataUrl;
+      document.getElementById('user-avatar').style.display = 'inline-block';
       document.getElementById('badge-dot').style.display = 'none';
     }
-    document.getElementById('btn-save-profile-final').textContent = 'Save Changes';
-    document.getElementById('profile-modal').style.display = 'none';
+    btn.textContent = 'SAVE CHANGES';
+    btn.disabled = false;
     pendingAvatarDataUrl = null;
+    document.getElementById('profile-modal').style.display = 'none';
     showToast('✓ Profile updated!');
   } catch(e) {
-    document.getElementById('btn-save-profile-final').textContent = 'Save Changes';
-    document.getElementById('profile-error').textContent = 'Error: ' + e.message;
-    alert('Save failed: ' + e.message);
+    btn.textContent = 'SAVE CHANGES';
+    btn.disabled = false;
+    errEl.textContent = e.message;
   }
-}
-
-document.addEventListener('click', (e) => {
-  const modal = document.getElementById('profile-modal');
-  if (modal && e.target === modal) closeProfile();
-});
+};
 
 /* Expose remaining functions needed by inline onclicks in HTML */
 window.doLogout          = doLogout;
