@@ -1023,7 +1023,7 @@
     </div>
 
     <div class="auth-error" id="profile-error"></div>
-    <button class="btn-save-profile" onclick="window.saveProfile()">Save Changes</button>
+    <button class="btn-save-profile" id="btn-save-profile-final" style="width:100%;padding:11px;border:1px solid rgba(129,140,248,0.3);border-radius:8px;background:var(--accent-bg);color:var(--accent);font-family:var(--font-mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;cursor:pointer;margin-top:4px;">Save Changes</button>
   </div>
 </div>
 
@@ -1305,9 +1305,13 @@ function bootApp(user) {
   populateCategories('income');
   // Attach profile badge click listener
   const badge = document.getElementById('profile-badge');
-  if (badge) {
-    badge.addEventListener('click', openProfile);
-  }
+  if (badge) badge.addEventListener('click', openProfile);
+  // Attach save profile button
+  const saveBtn = document.getElementById('btn-save-profile-final');
+  if (saveBtn) saveBtn.addEventListener('click', saveProfile);
+  // Attach close profile button
+  const closeBtn = document.querySelector('.modal-close');
+  if (closeBtn) closeBtn.addEventListener('click', closeProfile);
   // Start real-time Firestore listener
   startListener();
 }
