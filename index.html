@@ -1171,6 +1171,7 @@ async function doGoogleLogin() {
   errEl.textContent = '';
   document.getElementById('btn-google-login').textContent = 'Signing in…';
   try {
+    await signOut(auth); // clear any cached session first
     await signInWithPopup(auth, provider);
     // onAuthStateChanged will handle the rest
   } catch (e) {
@@ -1278,11 +1279,14 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     bootApp(user);
   } else {
-    // Not signed in — show auth screen
+    // Not signed in — always show login screen
     document.getElementById('auth-screen').style.display = 'flex';
     document.getElementById('app-shell').style.display   = 'none';
   }
 });
+
+// Sign out on page load so each visitor must choose their own account
+signOut(auth).catch(() => {});
 
 /* Return today's date in YYYY-MM-DD format */
 function todayISO() {
