@@ -1047,6 +1047,8 @@ const app      = initializeApp(firebaseConfig);
 const auth     = getAuth(app);
 const db       = getFirestore(app);
 const provider = new GoogleAuthProvider();
+// Force account picker every time so each person can choose their own Google account
+provider.setCustomParameters({ prompt: 'select_account' });
 /* ──────────────────────────────────────────────
    1. DATA — Categories & LocalStorage helpers
 ──────────────────────────────────────────────── */
