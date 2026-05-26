@@ -563,15 +563,7 @@
     .btn-edit:hover { color: var(--accent); }
 
     /* Edit transaction modal */
-    #edit-modal {
-      display: none;
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 9999;
-      align-items: center;
-      justify-content: center;
-    }
-    #edit-modal.open { display: flex; }
+    #edit-modal { box-sizing: border-box; }
     .edit-box {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 16px; padding: 28px 24px;
@@ -1710,7 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
 ──────────────────────────────────────────────── */
 let editType = 'income';
 
-function openEdit(id) {
+window.openEdit = function openEdit(id) {
   const tx = transactions.find(t => (t.firestoreId === id || String(t.createdAt) === String(id)));
   if (!tx) return;
   editType = tx.type;
@@ -1730,14 +1722,14 @@ function openEdit(id) {
   });
   // set type buttons
   setEditType(tx.type);
-  document.getElementById('edit-modal').style.display = 'flex';
+  const em = document.getElementById('edit-modal'); em.style.display = 'flex';
 }
 
-function closeEdit() {
-  document.getElementById('edit-modal').style.display = 'none';
+window.closeEdit = function closeEdit() {
+  const em2 = document.getElementById('edit-modal'); em2.style.display = 'none';
 }
 
-function setEditType(type) {
+window.setEditType = function setEditType(type) {
   editType = type;
   const bi = document.getElementById('edit-btn-income');
   const be = document.getElementById('edit-btn-expense');
@@ -1755,7 +1747,7 @@ function setEditType(type) {
   });
 }
 
-async function saveEdit() {
+window.saveEdit = async function saveEdit() {
   const id       = document.getElementById('edit-tx-id').value;
   const amount   = parseFloat(document.getElementById('edit-amount').value);
   const category = document.getElementById('edit-category').value;
